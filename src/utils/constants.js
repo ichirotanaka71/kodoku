@@ -14,7 +14,9 @@ export const CELL_SIZE = Math.floor(
 export const GRID_OFFSET_X = Math.floor(
   (GAME_WIDTH - (CELL_SIZE * GRID_COLS + CELL_GAP * (GRID_COLS - 1))) / 2
 )  // center align
-export const GRID_OFFSET_Y = 135  // below HUD (2-row HUD)
+const FOOTER_H = 80
+const GRID_H   = CELL_SIZE * GRID_ROWS + CELL_GAP * (GRID_ROWS - 1)
+export const GRID_OFFSET_Y = GAME_HEIGHT - FOOTER_H - GRID_H  // 下寄せ
 
 // Colors
 export const COLORS = {
