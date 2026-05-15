@@ -67,11 +67,17 @@ export class GameState {
   enemyPhase() {
     const msgs = []
 
-    // 1. Tick cooldowns + fire skills
     const { msgs: skillMsgs, shots } = this._tickSkills()
     msgs.push(...skillMsgs)
 
-    // 2. Spawn new objects
+    // 敵フェーズのダメージで HP が 0 以下になったら即ゲームオーバー（仮死なし）
+    if (this.player.hp <= 0) {
+      this.player.hp = 0
+      this.phase = 'gameover'
+      msgs.push({ text: '💀 アーチャーの矢で倒れた...', color: 'bad' })
+      return { msgs, shots, newCells: [] }
+    }
+
     const newCells = this._spawnObjects()
 
     this.turn++
@@ -87,14 +93,26 @@ export class GameState {
       for (let c = 0; c < GRID_COLS; c++) {
         const cell = this.cells[r][c]
 
-        // ゴブリン：CT カウント＋召喚
+        // ゴブリン：CT カウント＋隣接召喚
         if (cell.type === 'goblin') {
           cell.ct--
           if (cell.ct <= 0) {
             cell.ct = ENEMY_DEFS.goblin.ct
-            const empties = this.getEmpties()
-            if (empties.length > 0) {
-              const spot = empties[Math.floor(Math.random() * empties.length)]
+            const adjacentEmpties = []
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue
+                const nr = r + dr, nc = c + dc
+                if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS &&
+                    this.cells[nr][nc].type === 'empty') {
+                  adjacentEmpties.push({ r: nr, c: nc })
+                }
+              }
+            }
+            if (adjacentEmpties.length === 0) {
+              msgs.push({ text: `👺 ゴブリンが召喚しようとしたが場所がない！`, color: 'muted' })
+            } else {
+              const spot = adjacentEmpties[Math.floor(Math.random() * adjacentEmpties.length)]
               const def = ENEMY_DEFS.goblin
               this.cells[spot.r][spot.c] = { type: 'goblin', hp: def.hp, maxHp: def.hp, atk: def.atk, ct: def.ct }
               msgs.push({ text: `👺 ゴブリンが仲間を召喚！`, color: 'warn' })
@@ -102,12 +120,36 @@ export class GameState {
           }
         }
 
-        // アーチャー：毎ターン、同行・同列なら射撃
+        // アーチャー：上下左右4方向・盤面端まで射撃（斜めは安全）
         if (cell.type === 'archer') {
-          if (r === pr || c === pc) {
-            this.player.hp -= 3
-            msgs.push({ text: `🏹 アーチャーの矢が飛んできた！ -3HP`, color: 'bad' })
-            shots.push({ fromR: r, fromC: c, toR: pr, toC: pc })
+          const DIRECTIONS = [
+            { dr: -1, dc:  0 },
+            { dr:  1, dc:  0 },
+            { dr:  0, dc: -1 },
+            { dr:  0, dc:  1 },
+          ]
+          for (const { dr, dc } of DIRECTIONS) {
+            let tr = r + dr, tc = c + dc
+            let hit = false
+            while (tr >= 0 && tr < GRID_ROWS && tc >= 0 && tc < GRID_COLS) {
+              if (tr === pr && tc === pc) {
+                this.player.hp -= 3
+                shots.push({ fromR: r, fromC: c, toR: tr, toC: tc, hit: true })
+                msgs.push({ text: `🏹 アーチャーの矢がヒット！ -3HP`, color: 'bad' })
+                hit = true
+                break
+              }
+              tr += dr
+              tc += dc
+            }
+            if (!hit) {
+              // 盤面端（最後の有効マス）まで矢を飛ばす
+              shots.push({
+                fromR: r, fromC: c,
+                toR: tr - dr, toC: tc - dc,
+                hit: false,
+              })
+            }
           }
         }
       }
@@ -260,7 +302,7 @@ export class GameState {
       const spot = this._findNearbyEmpty(fromR, fromC)
       if (spot) {
         this.cells[spot.r][spot.c] = { type: 'coin', value: 1 }
-        drops.push({ fromR, fromC, toR: spot.r, toC: spot.c })
+        drops.push({ r: spot.r, c: spot.c, type: 'coin' })
       }
       return drops
     }
@@ -269,17 +311,15 @@ export class GameState {
     const xpSpot = this._findNearbyEmpty(fromR, fromC)
     if (xpSpot) {
       this.cells[xpSpot.r][xpSpot.c] = { type: 'xp', value: 1 }
-      drops.push({ fromR, fromC, toR: xpSpot.r, toC: xpSpot.c })
+      drops.push({ r: xpSpot.r, c: xpSpot.c, type: 'xp' })
     }
 
     if (Math.random() < 0.5) {
       const spot = this._findNearbyEmpty(fromR, fromC, xpSpot ? [xpSpot] : [])
       if (spot) {
-        this.cells[spot.r][spot.c] = {
-          type: Math.random() < 0.5 ? 'potion' : 'coin',
-          value: 1,
-        }
-        drops.push({ fromR, fromC, toR: spot.r, toC: spot.c })
+        const type = Math.random() < 0.5 ? 'potion' : 'coin'
+        this.cells[spot.r][spot.c] = { type, value: 1 }
+        drops.push({ r: spot.r, c: spot.c, type })
       }
     }
 

@@ -65,27 +65,31 @@ export class GameScene extends Phaser.Scene {
         const hpGfx = this.add.graphics()
         this.hpBars[r][c] = hpGfx
 
-        // CT label（右上）
-        const ct = this.add.text(x + 28, y - 26, '', {
-          ...FONT.WARN, fontSize: '10px',
-        }).setOrigin(1, 0)
+        const S = CELL_SIZE
+
+        // CT テキスト（左上）
+        const ct = this.add.text(x - S * 0.44, y - S * 0.44, '', {
+          fontSize: `${Math.floor(S * 0.2)}px`,
+          fontFamily: 'monospace',
+          color: '#fbbf24',
+        }).setOrigin(0, 0)
         this.ctTexts[r][c] = ct
 
-        // 敵HP表示（下・HPバーの近く）
-        const hpTxt = this.add.text(x, y + 28, '', {
-          fontSize: '10px', fontFamily: 'monospace', color: '#fca5a5',
-        }).setOrigin(0.5, 0).setDepth(6)
+        // 敵HP テキスト（右上）
+        const hpTxt = this.add.text(x + S * 0.44, y - S * 0.44, '', {
+          fontSize: `${Math.floor(S * 0.2)}px`, fontFamily: 'monospace', color: '#fca5a5',
+        }).setOrigin(1, 0).setDepth(6)
         this.enemyHpTexts[r][c] = hpTxt
 
-        // 敵ATK表示（左上）
-        const atkTxt = this.add.text(x - 28, y - 26, '', {
-          fontSize: '10px', fontFamily: 'monospace', color: '#fda4af',
+        // 敵ATK テキスト（左下）
+        const atkTxt = this.add.text(x - S * 0.44, y + S * 0.28, '', {
+          fontSize: `${Math.floor(S * 0.2)}px`, fontFamily: 'monospace', color: '#fda4af',
         }).setOrigin(0, 0).setDepth(6)
         this.enemyAtkTexts[r][c] = atkTxt
 
-        // Object/emoji text
-        const obj = this.add.text(x, y, '', {
-          fontSize: '28px',
+        // 絵文字（中央やや上）
+        const obj = this.add.text(x, y - S * 0.08, '', {
+          fontSize: `${Math.floor(S * 0.55)}px`,
         }).setOrigin(0.5)
         this.cellObjects[r][c] = obj
       }
@@ -148,11 +152,11 @@ export class GameScene extends Phaser.Scene {
         switch (cell.type) {
           case 'player':
             obj.setText('🧙')
-            obj.setFontSize('30px')
+            obj.setFontSize('32px')
             break
           case 'goblin':
             obj.setText('👺')
-            obj.setFontSize('26px')
+            obj.setFontSize('32px')
             this._drawHpBar(hpGfx, x, y, cell.hp, cell.maxHp)
             if (cell.ct != null) ctTxt.setText(`⏱${cell.ct}`)
             this.enemyHpTexts[r][c].setText(`HP${cell.hp}`)
@@ -160,28 +164,28 @@ export class GameScene extends Phaser.Scene {
             break
           case 'archer':
             obj.setText('🏹')
-            obj.setFontSize('26px')
+            obj.setFontSize('32px')
             this._drawHpBar(hpGfx, x, y, cell.hp, cell.maxHp)
             this.enemyHpTexts[r][c].setText(`HP${cell.hp}`)
             this.enemyAtkTexts[r][c].setText(`⚔${cell.atk}`)
             break
           case 'rock':
             obj.setText('🪨')
-            obj.setFontSize('26px')
+            obj.setFontSize('32px')
             this._drawHpBar(hpGfx, x, y, cell.hp, cell.maxHp)
             this.enemyHpTexts[r][c].setText(`HP${cell.hp}`)
             break
           case 'potion':
             obj.setText('🧪')
-            obj.setFontSize('26px')
+            obj.setFontSize('32px')
             break
           case 'coin':
             obj.setText('🪙')
-            obj.setFontSize('24px')
+            obj.setFontSize('32px')
             break
           case 'xp':
             obj.setText('💧')
-            obj.setFontSize('24px')
+            obj.setFontSize('32px')
             break
           default:
             obj.setText('')
@@ -195,14 +199,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   _drawHpBar(gfx, x, y, hp, maxHp) {
-    const bw = CELL_SIZE - 12
-    const bh = 4
+    const S  = CELL_SIZE
+    const bw = S - 10
+    const bh = 3
     const bx = x - bw / 2
-    const by = y + 22
+    const by = y + S * 0.35
     gfx.fillStyle(COLORS.HP_BAR_BG)
-    gfx.fillRoundedRect(bx, by, bw, bh, 2)
+    gfx.fillRoundedRect(bx, by, bw, bh, 1)
     gfx.fillStyle(COLORS.HP_BAR_FG)
-    gfx.fillRoundedRect(bx, by, Math.max(0, bw * (hp / maxHp)), bh, 2)
+    gfx.fillRoundedRect(bx, by, Math.max(0, bw * (hp / maxHp)), bh, 1)
   }
 
   _renderPath() {
@@ -219,7 +224,11 @@ export class GameScene extends Phaser.Scene {
           this.cellBgs[r][c].setFillStyle(COLORS.CELL_EMPTY)
           this.cellBgs[r][c].setStrokeStyle(0)
         }
-      this.scene.get('UIScene')?.updatePreview({ dmg: 0, healHp: 0, gainCoins: 0, gainXp: 0 })
+      const ui0 = this.scene.get('UIScene')
+      ui0?.updatePreview({ dmg: 0, healHp: 0, gainCoins: 0, gainXp: 0 })
+      ui0?.updateAtkDisplay(this.gs.player.atk, 0)
+      ui0?.updateAllBars()
+      ui0?._updateDigitalBar('steps', this.gs.player.maxSteps, this.gs.player.maxSteps)
       return
     }
 
@@ -299,7 +308,17 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    this.scene.get('UIScene')?.updatePreview(this._calcPathPreview(this.path))
+    const preview = this._calcPathPreview(this.path)
+    const ui = this.scene.get('UIScene')
+    ui?.updatePreview(preview)
+    ui?.updateAtkDisplay(this.gs.player.atk, preview.maxCombo)
+    const p = this.gs.player
+    ui?.updateAllBars(
+      p.hp - preview.dmg + preview.healHp,
+      Math.min(p.xpMax, p.xp + preview.gainXp),
+      p.coins + preview.gainCoins,
+    )
+    ui?._updateDigitalBar('steps', p.maxSteps - (this.path.length - 1), p.maxSteps)
   }
 
   _calcPathPreview(path) {
@@ -319,7 +338,7 @@ export class GameScene extends Phaser.Scene {
         gainXp++
       }
     }
-    return { dmg, healHp, gainCoins, gainXp }
+    return { dmg, healHp, gainCoins, gainXp, maxCombo: combo }
   }
 
   _updateUI() {
@@ -367,25 +386,26 @@ export class GameScene extends Phaser.Scene {
   onPointerMove(ptr) {
     if (!this.dragging || this.animating || this.path.length === 0) return
 
-    // 前フレームから今フレームまで8点補間してマスをスキップしないようにする
-    const prevX = ptr.prevPosition?.x ?? ptr.x
-    const prevY = ptr.prevPosition?.y ?? ptr.y
-    const steps = 8
+    // worldX/worldY を使用（Scale.FIT 対応）
+    const prevX = ptr.prevPosition?.x ?? ptr.worldX
+    const prevY = ptr.prevPosition?.y ?? ptr.worldY
+    const STEP = CELL_SIZE + CELL_GAP
+    const dist = Phaser.Math.Distance.Between(prevX, prevY, ptr.worldX, ptr.worldY)
+    const steps = Math.max(8, Math.ceil(dist / (STEP * 0.5)))
     for (let i = 1; i <= steps; i++) {
       const t = i / steps
-      const ix = Phaser.Math.Linear(prevX, ptr.x, t)
-      const iy = Phaser.Math.Linear(prevY, ptr.y, t)
+      const ix = Phaser.Math.Linear(prevX, ptr.worldX, t)
+      const iy = Phaser.Math.Linear(prevY, ptr.worldY, t)
       this._processPointerAt(ix, iy)
-      if (!this.dragging) return  // キャンセルされたら打ち切る
+      if (!this.dragging) return
     }
   }
 
   _processPointerAt(worldX, worldY) {
-    // グリッド外に出たらキャンセル
-    const boardRight  = GRID_OFFSET_X + GRID_COLS * (CELL_SIZE + CELL_GAP) - CELL_GAP
+    // 上下のみキャンセル（左右にはみ出てもキャンセルしない）
+    const boardTop    = GRID_OFFSET_Y
     const boardBottom = GRID_OFFSET_Y + GRID_ROWS * (CELL_SIZE + CELL_GAP) - CELL_GAP
-    if (worldX < GRID_OFFSET_X || worldX > boardRight ||
-        worldY < GRID_OFFSET_Y || worldY > boardBottom) {
+    if (worldY < boardTop || worldY > boardBottom) {
       this._cancelPath()
       this.dragging = false
       return
@@ -472,8 +492,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   _updateStepInfo() {
-    const steps = this.path.length > 0 ? this.path.length - 1 : 0
-    this.scene.get('UIScene')?.updateSteps(steps, this.gs.player.maxSteps)
+    const used = this.path.length > 0 ? this.path.length - 1 : 0
+    const remaining = this.gs.player.maxSteps - used
+    this.scene.get('UIScene')?.updateStepDisplay(remaining, this.gs.player.maxSteps)
   }
 
   // =========================================================
@@ -494,14 +515,14 @@ export class GameScene extends Phaser.Scene {
 
   _cancelPath() {
     this.path = []
-    this._renderPath()
+    this._renderPath()  // ATK/bars リセットも内包
     this._updateStepInfo()
   }
 
   _skipTurn() {
     if (this.animating || this.gs.phase !== 'player') return
     this.path = []
-    this._doEnemyPhase()
+    this._doEnemyPhase(this.gs.player.maxSteps)
   }
 
   // =========================================================
@@ -509,6 +530,8 @@ export class GameScene extends Phaser.Scene {
   // =========================================================
   _animateMove() {
     const path = [...this.path]
+    const usedSteps = path.length - 1
+    const remainingSteps = this.gs.player.maxSteps - usedSteps
     this.path = []
     this._renderPath()
     this.animating = true
@@ -519,14 +542,20 @@ export class GameScene extends Phaser.Scene {
 
     let step = 0
     let combo = 0
-    const flyQueue = []  // 終着点でまとめて発火
+    const flyQueue  = []  // 終着点でまとめて発火（コイン・薬・XP）
+    const dropQueue = []  // 終着点でまとめて散らばる（敵ドロップ）
 
     const moveStep = async () => {
       if (step >= path.length - 1) {
         const dest = path[path.length - 1]
 
-        // flyQueue を一斉発火（コイン・薬・XP が HUD へ飛ぶ）
+        // flyQueue 一斉発火（コイン・薬・XP が HUD へ飛ぶ）
         await this._fireFlyQueue(flyQueue)
+        this.scene.get('UIScene')?.updateAtkDisplay(this.gs.player.atk, 0)
+        this.scene.get('UIScene')?.updateAllBars()
+
+        // dropQueue 一斉発火（撃破位置からアイテムが散らばる）
+        await this._fireDropQueue(dropQueue)
 
         // 死亡判定（仮死システム：終着点到着後に判定）
         if (this.gs.player.hp <= 0) {
@@ -553,13 +582,16 @@ export class GameScene extends Phaser.Scene {
               if (nr < 0 || nr >= GRID_ROWS || nc < 0 || nc >= GRID_COLS) continue
               const bcell = this.gs.cells[nr][nc]
               if (bcell.type === 'goblin' || bcell.type === 'archer' || bcell.type === 'rock') {
+                const bType = bcell.type
                 bcell.hp -= this.gs.player.atk
                 bombHits++
                 if (bcell.hp <= 0) {
-                  const drops = this.gs._dropLoot(nr, nc, bcell.type)
                   this.gs.cells[nr][nc] = { type: 'empty' }
-                  for (const d of drops) this._updateCell(d.toR, d.toC)
-                  this._animateLootDrops(drops)
+                  const drops = this.gs._dropLoot(nr, nc, bType)
+                  for (const d of drops) {
+                    this._updateCell(d.r, d.c)
+                    this._animateLootDrop(nr, nc, d.r, d.c)
+                  }
                 }
               }
             }
@@ -582,15 +614,15 @@ export class GameScene extends Phaser.Scene {
 
         this.time.delayedCall(combo > 1 ? 400 : 100, () => {
           this.renderAll()
-          this.animating = false
 
           if (this.gs.phase === 'shop') {
+            this.animating = false
             this.time.delayedCall(200, () => {
               this.scene.launch('ShopScene', { gs: this.gs, gameScene: this })
             })
             return
           }
-          this._doEnemyPhase()
+          this._doEnemyPhase(remainingSteps)
         })
         return
       }
@@ -626,9 +658,16 @@ export class GameScene extends Phaser.Scene {
         flyQueue.push({ type: 'xp', from: { x, y } })
 
       } else if (cell.type === 'goblin' || cell.type === 'archer' || cell.type === 'rock') {
+        const enemyType = cell.type
         combo++
-        await this._fightEnemy(r, c, combo)
-        // HP をリアルタイム更新（仮死表示・点滅含む）
+        const killed = await this._fightEnemy(r, c, combo)
+        if (killed) {
+          this.cellObjects[r][c].setText('')
+          const skull = this.add.text(x, y, '💀', { fontSize: '28px' })
+            .setOrigin(0.5).setDepth(8).setScale(0)
+          this.tweens.add({ targets: skull, scaleX: 1, scaleY: 1, duration: 150, ease: 'Back.Out' })
+          dropQueue.push({ fromR: r, fromC: c, enemyType, skullObj: skull })
+        }
         this.scene.get('UIScene')?.updateHpRealtime(this.gs.player.hp, this.gs.player.maxHp)
       }
 
@@ -642,22 +681,24 @@ export class GameScene extends Phaser.Scene {
   async _fireFlyQueue(queue) {
     if (queue.length === 0) return
 
+    const ui = this.scene.get('UIScene')
     const HUD_POS = {
-      coin:   { x: 234, y: 40 },
-      potion: { x: 36,  y: 40 },
-      xp:     { x: 432, y: 40 },
+      coin:   ui?.getHudTargetPos('coins') ?? { x: 195, y: 60 },
+      potion: ui?.getHudTargetPos('hp')    ?? { x: 65,  y: 60 },
+      xp:     ui?.getHudTargetPos('xp')    ?? { x: 195, y: 60 },
     }
     const ICON = { coin: '🪙', potion: '🧪', xp: '💧' }
     const xpCount = queue.filter(i => i.type === 'xp').length
 
     const promises = queue.map(item => new Promise(resolve => {
+      const target = HUD_POS[item.type] ?? { x: 195, y: 60 }
       const flyObj = this.add.text(item.from.x, item.from.y, ICON[item.type], {
         fontSize: '24px',
       }).setOrigin(0.5).setDepth(30)
       this.tweens.add({
         targets: flyObj,
-        x: HUD_POS[item.type].x,
-        y: HUD_POS[item.type].y,
+        x: target.x,
+        y: target.y,
         scaleX: 0.3, scaleY: 0.3,
         duration: 400, ease: 'Quad.In',
         onComplete: () => { flyObj.destroy(); resolve() },
@@ -674,7 +715,6 @@ export class GameScene extends Phaser.Scene {
       })
     }
 
-    const ui = this.scene.get('UIScene')
     ui?.updateHUD()
     const types = new Set(queue.map(i => i.type))
     if (types.has('coin'))   ui?.bounceHUD('coins')
@@ -682,33 +722,48 @@ export class GameScene extends Phaser.Scene {
     if (types.has('xp'))     ui?.bounceHUD('xp')
   }
 
-  _animateLootDrop(fromR, fromC, toR, toC, cb) {
-    const from = this._cellCenter(fromR, fromC)
-    const to   = this._cellCenter(toR, toC)
-    const obj  = this.cellObjects[toR][toC]
+  _animateLootDrop(fromR, fromC, toR, toC) {
+    return new Promise(resolve => {
+      const from = this._cellCenter(fromR, fromC)
+      const to   = this._cellCenter(toR, toC)
+      const obj  = this.cellObjects[toR][toC]
 
-    obj.setPosition(from.x, from.y).setScale(0.5).setAlpha(1)
+      obj.setPosition(from.x, from.y).setScale(0.5).setAlpha(1)
 
-    const midX = (from.x + to.x) / 2
-    const midY = Math.min(from.y, to.y) - 60
+      const midX = (from.x + to.x) / 2
+      const midY = Math.min(from.y, to.y) - 60
 
-    this.tweens.add({
-      targets: obj,
-      x: midX, y: midY,
-      scaleX: 0.8, scaleY: 0.8,
-      duration: 200,
-      ease: 'Quad.Out',
-      onComplete: () => {
-        this.tweens.add({
-          targets: obj,
-          x: to.x, y: to.y,
-          scaleX: 1, scaleY: 1,
-          duration: 200,
-          ease: 'Bounce.Out',
-          onComplete: cb,
-        })
-      },
+      this.tweens.add({
+        targets: obj,
+        x: midX, y: midY,
+        scaleX: 0.8, scaleY: 0.8,
+        duration: 200,
+        ease: 'Quad.Out',
+        onComplete: () => {
+          this.tweens.add({
+            targets: obj,
+            x: to.x, y: to.y,
+            scaleX: 1, scaleY: 1,
+            duration: 200,
+            ease: 'Bounce.Out',
+            onComplete: resolve,
+          })
+        },
+      })
     })
+  }
+
+  async _fireDropQueue(queue) {
+    if (queue.length === 0) return
+    const promises = queue.flatMap(({ fromR, fromC, enemyType, skullObj }) => {
+      const drops = this.gs._dropLoot(fromR, fromC, enemyType)
+      if (skullObj) skullObj.destroy()
+      return drops.map(drop => {
+        this._updateCell(drop.r, drop.c)
+        return this._animateLootDrop(fromR, fromC, drop.r, drop.c)
+      })
+    })
+    await Promise.all(promises)
   }
 
   _flashCombatEffect(x, y) {
@@ -738,30 +793,45 @@ export class GameScene extends Phaser.Scene {
     const cell = this.gs.cells[r][c]
     const mult = 1 + (combo - 1) * 0.2
     const playerDmg = Math.ceil(this.gs.player.atk * mult)
-    const isKill = playerDmg >= cell.hp
 
-    this._hitStop(isKill ? 100 : 80)
-    this._showDamageNumber(r, c, playerDmg, isKill)
+    this._hitStop(80)
     cell.hp -= playerDmg
 
     if (cell.hp <= 0) {
+      this._redrawEnemyHP(r, c, 0, cell.maxHp)
+      this._showDamageNumber(r, c, playerDmg, true)
+      await this._killEffect(r, c)
       if (this.gs.player.drain) {
         this.gs.player.hp = Math.min(this.gs.player.maxHp, this.gs.player.hp + 1)
         this._floatText('🩸 ドレイン HP+1', 'good')
       }
-      await this._killEffect(r, c)
-      const enemyType = cell.type
       this.gs.cells[r][c] = { type: 'empty' }
-      const drops = this.gs._dropLoot(r, c, enemyType)
-      for (const d of drops) this._updateCell(d.toR, d.toC)
-      this._animateLootDrops(drops)
       return true
     } else {
+      this._showDamageNumber(r, c, playerDmg, false)
+      this._redrawEnemyHP(r, c, cell.hp, cell.maxHp)
       this.cameras.main.shake(80, 0.005)
       this.gs.player.hp -= cell.atk
-      this.scene.get('UIScene')?.updateHUD()
-      this.enemyHpTexts[r][c].setText(`HP${cell.hp}`)
+      this.scene.get('UIScene')?.updateHpRealtime(this.gs.player.hp, this.gs.player.maxHp)
       return false
+    }
+  }
+
+  _redrawEnemyHP(r, c, hp, maxHp) {
+    const hpGfx = this.hpBars[r][c]
+    const { x, y } = this._cellCenter(r, c)
+    const S  = CELL_SIZE
+    const bw = S - 10
+    const bh = 3
+    const bx = x - bw / 2
+    const by = y + S * 0.35
+    hpGfx.clear()
+    hpGfx.fillStyle(COLORS.HP_BAR_BG)
+    hpGfx.fillRoundedRect(bx, by, bw, bh, 1)
+    hpGfx.fillStyle(COLORS.HP_BAR_FG)
+    hpGfx.fillRoundedRect(bx, by, bw * Math.max(0, hp / maxHp), bh, 1)
+    if (this.enemyHpTexts?.[r]?.[c]) {
+      this.enemyHpTexts[r][c].setText(`HP${Math.max(0, hp)}`)
     }
   }
 
@@ -772,19 +842,12 @@ export class GameScene extends Phaser.Scene {
     const { x, y } = this._cellCenter(r, c)
     obj.setPosition(x, y).setScale(1).setAlpha(1)
     switch (cell.type) {
-      case 'xp':     obj.setText('💧').setFontSize('24px'); break
-      case 'potion': obj.setText('🧪').setFontSize('26px'); break
-      case 'coin':   obj.setText('🪙').setFontSize('24px'); break
+      case 'xp':     obj.setText('💧').setFontSize('32px'); break
+      case 'potion': obj.setText('🧪').setFontSize('32px'); break
+      case 'coin':   obj.setText('🪙').setFontSize('32px'); break
       default:       obj.setText('')
     }
     obj.setDepth(4)
-  }
-
-  // ドロップアニメーション（複数対応ラッパー）
-  _animateLootDrops(drops) {
-    for (const d of drops) {
-      this._animateLootDrop(d.fromR, d.fromC, d.toR, d.toC, () => {})
-    }
   }
 
   _hitStop(duration = 80) {
@@ -864,13 +927,25 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  _doEnemyPhase() {
+  _doEnemyPhase(remainingAtStart = 0) {
     this.animating = true
     const { msgs, newCells, shots } = this.gs.enemyPhase()
 
-    // アーチャー射撃アニメーションを先に再生してから続きへ
-    const shotPromises = shots.map(s => this._animateArrowShot(s.fromR, s.fromC, s.toR, s.toC))
-    Promise.all(shotPromises).then(() => {
+    this._animateArrowShots(shots, () => {
+      // 矢アニメーション完了後にゲームオーバー判定（アーチャー即死）
+      if (this.gs.phase === 'gameover') {
+        this.renderAll()
+        this.scene.get('UIScene')?.updateHUD()
+        msgs.forEach((m, i) => {
+          this.time.delayedCall(i * 100, () => this._floatText(m.text, m.color))
+        })
+        this.time.delayedCall(600, () => {
+          this.scene.launch('GameOverScene', { gs: this.gs, gameScene: this })
+          this.scene.pause()
+        })
+        return
+      }
+
       this._animateDrops(newCells, () => {
         msgs.forEach((m, i) => {
           this.time.delayedCall(i * 100, () => {
@@ -880,30 +955,75 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(msgs.length * 100 + 200, () => {
           this.renderAll()
           this.scene.get('UIScene')?.updateHUD()
-          this.animating = false
-          this._updateStepInfo()
+          this._animateStepRestore(remainingAtStart)
         })
       })
     })
   }
 
-  _animateArrowShot(fromR, fromC, toR, toC) {
-    return new Promise(resolve => {
-      const from = this._cellCenter(fromR, fromC)
-      const to   = this._cellCenter(toR, toC)
-      const arrow = this.add.text(from.x, from.y, '➶', { fontSize: '20px' })
-        .setOrigin(0.5).setDepth(25)
+  // STEP を残り歩数からカウントアップして入力受付開始
+  _animateStepRestore(from) {
+    const maxSteps = this.gs.player.maxSteps
+    const ui = this.scene.get('UIScene')
+    let current = from
+
+    if (current >= maxSteps) {
+      ui?.updateStepDisplay(maxSteps, maxSteps, false)
+      this.animating = false
+      return
+    }
+
+    const tick = () => {
+      current++
+      ui?.updateStepDisplay(current, maxSteps, true)
+      if (current < maxSteps) {
+        this.time.delayedCall(60, tick)
+      } else {
+        ui?.updateStepDisplay(maxSteps, maxSteps, false)
+        this.animating = false
+      }
+    }
+    tick()
+  }
+
+  // 4方向の矢を全て同時発射（CHANGES11）
+  _animateArrowShots(shots, onComplete) {
+    if (shots.length === 0) { onComplete?.(); return }
+
+    let completed = 0
+    for (const shot of shots) {
+      const from = this._cellCenter(shot.fromR, shot.fromC)
+      const to   = this._cellCenter(shot.toR,   shot.toC)
+
+      const dr = shot.toR - shot.fromR
+      const dc = shot.toC - shot.fromC
+      let char = '•'
+      if (dr === -1) char = '↑'
+      else if (dr === 1) char = '↓'
+      else if (dc === -1) char = '←'
+      else if (dc === 1) char = '→'
+
+      const arrow = this.add.text(from.x, from.y, char, {
+        fontSize: '20px',
+        color: shot.hit ? '#f87171' : '#fbbf24',
+        stroke: '#000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(20)
+
       this.tweens.add({
         targets: arrow,
         x: to.x, y: to.y,
-        duration: 300, ease: 'Linear',
+        duration: 200, ease: 'Linear',
         onComplete: () => {
           arrow.destroy()
-          this.cameras.main.shake(60, 0.004)
-          resolve()
+          if (shot.hit) {
+            this.cameras.main.shake(60, 0.004)
+            this._showDamageNumber(shot.toR, shot.toC, 3, false)
+          }
+          completed++
+          if (completed >= shots.length) onComplete?.()
         },
       })
-    })
+    }
   }
 
   _animateDrops(newCells, cb) {

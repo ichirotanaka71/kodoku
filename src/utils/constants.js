@@ -1,10 +1,20 @@
 // Grid configuration
 export const GRID_COLS = 7
 export const GRID_ROWS = 7
-export const CELL_SIZE = 64
-export const CELL_GAP = 4
-export const GRID_OFFSET_X = 26   // left margin
-export const GRID_OFFSET_Y = 110  // top margin (below HUD)
+export const CELL_GAP  = 3
+
+export const GAME_WIDTH  = 390
+export const GAME_HEIGHT = 844
+
+const _PADDING = 6
+export const CELL_SIZE = Math.floor(
+  (GAME_WIDTH - _PADDING * 2 - CELL_GAP * (GRID_COLS - 1)) / GRID_COLS
+)  // (390 - 12 - 18) / 7 = 51px
+
+export const GRID_OFFSET_X = Math.floor(
+  (GAME_WIDTH - (CELL_SIZE * GRID_COLS + CELL_GAP * (GRID_COLS - 1))) / 2
+)  // center align
+export const GRID_OFFSET_Y = 135  // below HUD (2-row HUD)
 
 // Colors
 export const COLORS = {

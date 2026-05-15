@@ -6,8 +6,8 @@ import { GameOverScene } from './scenes/GameOverScene.js'
 
 const config = {
   type: Phaser.AUTO,
-  width: 540,
-  height: 720,
+  width: 390,
+  height: 844,
   backgroundColor: '#1a1a2e',
   parent: 'game-container',
   scene: [GameScene, UIScene, ShopScene, GameOverScene],
